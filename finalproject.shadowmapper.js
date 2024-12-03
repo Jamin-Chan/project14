@@ -48,63 +48,43 @@ class ShadowMapper {
      * @param {number} scene_extent Extent of the scene
      * @returns {Object} Shadow mapping parameters
      */
-    prepareShadowMap(light_position, scene_center, scene_extent) {
-        const gl = this.gl;
+    prepareShadowMap() {
+        const light = this.findMainDirectionalLight();
+        if (!light) return null;
     
-        // Validate framebuffer and texture setup
-        if (!this.framebuffer || !this.depth_texture) {
-            console.error("Framebuffer or depth texture not initialized!");
-            return null;
-        }
+        // More sophisticated light position and scene bounds calculation
+        const lightPos = light.getPosition();
+        const sceneCenter = this.calculateSceneBounds();
+        const sceneExtent = this.calculateSceneExtent(sceneCenter);
     
-        // Validate and use scene extent
-        const extent = Array.isArray(scene_extent) 
-            ? scene_extent 
-            : [-scene_extent, scene_extent, -scene_extent, scene_extent, -scene_extent, scene_extent];
-    
-        // Create light projection matrix (orthographic)
-        const light_projection = mat4.ortho(
-            mat4.create(), 
-            extent[0], extent[1],   // Left, Right
-            extent[2], extent[3],   // Bottom, Top
-            extent[4], extent[5]    // Near, Far
+        return this.shadowMapper.prepareShadowMap(
+            lightPos,      // Light position
+            sceneCenter,   // Scene center
+            sceneExtent    // Scene extent
         );
-    
-        // Create light view matrix
-        const light_view = mat4.lookAt(
-            mat4.create(),
-            light_position,
-            scene_center,
-            [0, 1, 0]  // Up vector
-        );
-    
-        // Combine to form light space matrix
-        const light_space_matrix = mat4.multiply(
-            mat4.create(), 
-            light_projection, 
-            light_view
-        );
-    
-        // Bind framebuffer for shadow map rendering
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
-        gl.viewport(0, 0, this.width, this.height);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    
-        // Calculate normalized light direction
-        const light_direction = vec3.normalize(
-            vec3.create(), 
-            vec3.subtract(vec3.create(), scene_center, light_position)
-        );
-    
-        // Reset framebuffer to avoid unintended rendering issues
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    
-        return {
-            shadow_map: this.depth_texture,
-            light_space_matrix: light_space_matrix,
-            light_direction: light_direction
-        };
     }
+    
+    calculateSceneBounds() {
+        // Implement logic to find scene center
+        // Could involve averaging bounding boxes of all scene nodes
+        return [0, 0, 0];  // Placeholder
+    }
+    
+    calculateSceneExtent(center) {
+        // Calculate scene's maximum dimension from center
+        // This helps determine orthographic projection size
+        return 10;  // Placeholder value
+    }
+
+        
+    findMainDirectionalLight() {
+        if (!this.scene) return null;
+
+        const lightNodes = this.scene.getNodes().filter(node => node.type === 'light');
+        //console.log(lightNodes.find(node => node.light instanceof DirectionalLight))
+        return lightNodes.find(node => node.light instanceof DirectionalLight);
+    }
+
 
     /**
      * Finalize shadow map rendering

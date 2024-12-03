@@ -367,16 +367,20 @@ class WebGlApp
         // This will use the MVP that was passed to the shader
         this.box.render( gl )
 
-        // Render the scene
-        if (this.scene) {
-            const shadowParams = this.prepareShadowMap();
-
+        const shadowParams = this.prepareShadowMap();
+    
+        if (shadowParams) {
             // Render shadow map
-            this.renderShadowMap(shadowParams);
-
+            this.renderShadowMap(gl, shadowParams);
+            
             // Render scene with shadows
-            this.renderSceneWithShadows(shadowParams);
-        }
+            this.renderSceneWithShadows(gl, shadowParams);
+        } else {
+            // Render scene normally if no shadow map
+            if (this.scene) this.scene.render( gl )
+
+        }    
+
 
     }
 
@@ -394,12 +398,12 @@ class WebGlApp
         );
     }
 
-    renderShadowMap(shadowParams) {
+    renderShadowMap(gl, shadowParams) {
         if (!shadowParams) return;
     
         // Ensure the depth shader is initialized
-        console.log(this.shaders);
-        const depthShader = this.shaders.find(shader => shader.name === 'depth');
+        //console.log(this.shaders);
+        const depthShader = this.shaders.find(shader => shader.name === 'out_depth');
         if (!depthShader) {
             console.error('Depth shader not found!');
             return;
@@ -430,7 +434,7 @@ class WebGlApp
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
     
-    renderSceneWithShadows(shadowParams) {
+    renderSceneWithShadows(gl, shadowParams) {
         if (!shadowParams) {
             // Render scene normally if no shadow params
             this.scene.render(gl);
@@ -438,7 +442,7 @@ class WebGlApp
         }
     
         // Pass shadow map and light-space matrix to the scene shader
-        const mainShader = this.shaders.find(shader => shader.name === 'main');
+        const mainShader = this.shaders;
         if (!mainShader) {
             //console.error('Main shader not found!');
             return;
@@ -453,7 +457,7 @@ class WebGlApp
         // Render the scene with shadows
         this.scene.render(gl, mainShader);
     }
-
+    
     findMainDirectionalLight() {
         if (!this.scene) return null;
 
