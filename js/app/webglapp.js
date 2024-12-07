@@ -142,6 +142,9 @@ class WebGlApp
                 case 'Textured':
                     this.active_shader = 2
                     break
+                case 'Shadow':
+                    this.active_shader = 3
+                    break
             }
             if (old_active_shader != this.active_shader) {
                 this.scene.resetLights( this.shaders[this.active_shader] )
@@ -442,7 +445,8 @@ class WebGlApp
         }
     
         // Pass shadow map and light-space matrix to the scene shader
-        const mainShader = this.shaders;
+        const mainShader = this.shaders[0];
+        console.log(mainShader)
         if (!mainShader) {
             //console.error('Main shader not found!');
             return;
@@ -460,8 +464,9 @@ class WebGlApp
     
     findMainDirectionalLight() {
         if (!this.scene) return null;
-
+        //console.log(this.scene.getNodes())
         const lightNodes = this.scene.getNodes().filter(node => node.type === 'light');
+        //console.log(lightNodes)
         //console.log(lightNodes.find(node => node.light instanceof DirectionalLight))
         return lightNodes.find(node => node.light instanceof DirectionalLight);
     }

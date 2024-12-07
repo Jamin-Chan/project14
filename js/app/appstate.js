@@ -13,6 +13,7 @@ class AppState
             {
                 'Phong': document.getElementById( 'shadingPhong' ),
                 'Textured': document.getElementById( 'shadingTextured' ),
+                'Shadow': document.getElementById( 'shadingShadow' ),
             },
             'Shading Debug': {
                 'Normals': document.getElementById( 'shadingDebugNormals' ),
@@ -34,7 +35,7 @@ class AppState
         }
 
         // Update UI with default values
-        this.updateUI( 'Shading', 'Phong' )
+        this.updateUI( 'Phong', 'Shadow', 'Shading',)
         this.updateUI( 'Shading Debug', '' )
         this.updateUI( 'Control', 'Camera' )
         
@@ -88,8 +89,10 @@ class AppState
         // Shading
         if ( Input.isKeyPressed( 'c' ) ) {
             this.updateUI( 'Shading', 'Phong' )
-        } else if ( Input.isKeyPressed( 'v' ) ) {
+        }if ( Input.isKeyPressed( 'v' ) ) {
             this.updateUI( 'Shading', 'Textured' )
+        }else if ( Input.isKeyPressed( 'b' ) ) {
+            this.updateUI( 'Shading', 'Shadow' )
         }
 
         // Shading Debug

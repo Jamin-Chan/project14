@@ -1,4 +1,8 @@
 #version 300 es
+precision highp float;
+
+uniform sampler2D u_shadow_map;
+uniform vec3 u_light_direction;
 
 #define MAX_LIGHTS 16
 
@@ -47,6 +51,9 @@ uniform vec3 u_eye;
 // received from vertex stage
 in vec3 o_vertex_normal_world;
 in vec3 o_vertex_position_world;
+in vec3 v_world_pos;
+in vec3 v_normal;
+in vec4 v_light_space_pos;
 
 // with webgl 2, we now have to define an out that will be the color of the fragment
 out vec4 o_fragColor;
@@ -107,22 +114,56 @@ vec3 shadePointLight(Material material, PointLight light, vec3 normal, vec3 eye,
     return result;
 }
 
-void main() {
+float calculateShadow(vec4 light_space_pos, sampler2D shadow_map) {
+    // Perspective divide
+    vec3 proj_coords = light_space_pos.xyz / light_space_pos.w;
+    
+    // Transform to [0,1] range
+    proj_coords = proj_coords * 0.5 + 0.5;
+    
+    // Check if outside light frustum
+    if (proj_coords.z > 1.0) 
+        return 0.0;
+    
+    // Get closest depth value from light's perspective
+    float closest_depth = texture(shadow_map, proj_coords.xy).r;
+    
+    // Get depth of current fragment from light's perspective
+    float current_depth = proj_coords.z;
+    
+    // Add a small bias to prevent shadow acne
+    float bias = max(0.005 * (1.0 - dot(v_normal, u_light_direction)), 0.001);
+    
+    // Simple percentage-closer filtering (PCF) for soft shadows
+    float shadow = 0.0;
+    vec2 texel_size = 1.0 / vec2(textureSize(shadow_map, 0));
+    for(int x = -1; x <= 1; ++x) {
+        for(int y = -1; y <= 1; ++y) {
+            float pcf_depth = texture(shadow_map, proj_coords.xy + vec2(x, y) * texel_size).r; 
+            shadow += current_depth - bias > pcf_depth ? 1.0 : 0.0;        
+        }    
+    }
+    shadow /= 9.0;
+    
+    return shadow;
+}
 
+void main() {
     // If we want to visualize only the normals, no further computations are needed
     if (u_show_normals) {
         o_fragColor = vec4(o_vertex_normal_world, 1.0);
         return;
     }
 
-    // we start at 0.0 contribution for this vertex
-    vec3 light_contribution = vec3(0.0);
+    // Calculate shadow
+    float shadow = calculateShadow(v_light_space_pos, u_shadow_map);
 
-    // iterate over all possible lights and add their contribution
-    for(int i = 0; i < MAX_LIGHTS; i++) {
+    // Combine contributions from lights
+    vec3 light_contribution = vec3(0.0);
+    for (int i = 0; i < MAX_LIGHTS; i++) {
         light_contribution += shadeAmbientLight(u_material, u_lights_ambient[i]);
-        light_contribution += shadeDirectionalLight(u_material, u_lights_directional[i], o_vertex_normal_world, u_eye, o_vertex_position_world);
-        light_contribution += shadePointLight(u_material, u_lights_point[i], o_vertex_normal_world, u_eye, o_vertex_position_world);
+        light_contribution += shadeDirectionalLight(u_material, u_lights_directional[i], o_vertex_normal_world, u_eye, o_vertex_position_world) * (1.0 - shadow);
+        light_contribution += shadePointLight(u_material, u_lights_point[i], o_vertex_normal_world, u_eye, o_vertex_position_world) * (1.0 - shadow);
     }
 
     o_fragColor = vec4(light_contribution, 1.0);
